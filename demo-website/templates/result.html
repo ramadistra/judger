@@ -1,0 +1,8 @@
+<h2>Result</h2>
+<h3>Verdict: {% if accepted %} Correct! {% else %} Wrong :( {% endif %}</h3>
+<h3>Test Cases</h3>
+<ul>
+    {% for case in cases %}
+    <li>{{ case }}</li>
+    {% endfor %}
+</ul>
