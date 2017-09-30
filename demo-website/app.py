@@ -38,10 +38,10 @@ def verify(script, question):
     response = json.loads(response_http.text)
     stdouts = response['stdout']
     outputs = parse_stdouts(stdouts, n)
-    
-    for i in range(n):
-        expected_output = open("{}{}.out".format(question, i+1)).read()
-        if expected_output.strip() == outputs[i].strip():
+    answers = [open("{}{}.out".format(question, i+1)).read() for i in range(n)]
+
+    for expected, got in zip(answers, outputs):
+        if expected.strip() == got.strip():
             result.append("correct")
         else:
             status = response['status']
