@@ -1,5 +1,5 @@
-# Webservice
-
+# Judger
+Simple judger for python built using Go and Docker. Sandboxing is provided by using Docker containers.
 ## API
 | Parameters | Description                                  |
 |------------|----------------------------------------------|
