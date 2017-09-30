@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -17,7 +17,7 @@ import (
 
 const (
 	port     string = ":8000"
-	imageDir string = "./images"
+	imageDir string = "./images/"
 	// Milliseconds
 	defaultTimeOut int = 1000
 	maxTimeOut     int = 10000
@@ -32,94 +32,106 @@ type Output struct {
 	Status string `json:"status"`
 }
 
+type APIRequest struct {
+	Source  string   `json:"source"`
+	Stdin   []string `json:"stdin"`
+	TimeOut int      `json:"timeout"`
+}
+
 func main() {
 	fmt.Println("Server running at http://localhost" + port)
 	router := httprouter.New()
-	router.HandlerFunc("POST", "/python3", python3)
+	router.HandlerFunc("POST", "/python3", handleImage("python3", ".py"))
 	n := negroni.Classic()
 	n.UseHandler(router)
 	http.ListenAndServe(port, n)
 }
 
-func python3(w http.ResponseWriter, r *http.Request) {
-	var (
-		status = http.StatusInternalServerError
-		err    error
-		id     string
-	)
-	defer func() {
-		if id != "" {
-			// Delete folder.
-			exec.Command("rm", "-rf", id).Run()
-			// Delete image.
-			exec.Command("docker", "rmi", id).Run()
-		}
+func handleImage(imagePath string, ext string) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var (
+			status = http.StatusInternalServerError
+			err    error
+			id     string
+		)
+		defer func() {
+			if id != "" {
+				// Delete folder.
+				exec.Command("rm", "-rf", id).Run()
+				// Delete image.
+				exec.Command("docker", "rmi", id).Run()
+			}
+			if err != nil {
+				http.Error(w, err.Error(), status)
+			}
+		}()
+
+		var req APIRequest
+		reqJSON, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			http.Error(w, err.Error(), status)
+			return
 		}
-	}()
+		err = json.Unmarshal(reqJSON, &req)
+		if err != nil {
+			return
+		}
 
-	id = generateFileName()
-	CopyDir(imageDir+"/python3", id)
+		id = generateFileName()
 
-	source := r.FormValue("source")
-	sourcefile, err := os.Create(id + "/source.py")
-	if err != nil {
-		return
+		// Copy base image
+		CopyDir(imageDir+imagePath, id)
+
+		source := req.Source
+		sourcefile, err := os.Create(id + "/source.py")
+		if err != nil {
+			return
+		}
+		sourcefile.WriteString(source)
+		sourcefile.Close()
+
+		for i, v := range req.Stdin {
+			filename := fmt.Sprintf("/%d.in", i+1)
+			inputfile, err := os.Create(id + filename)
+			if err != nil {
+				return
+			}
+			inputfile.WriteString(v + "\n")
+			inputfile.Close()
+		}
+
+		build := exec.Command("docker", "build", "-t", id, id)
+		err = build.Run()
+		if err != nil {
+			return
+		}
+
+		// Run the source code.
+		cmd := exec.Command("docker", "run", id)
+		timeout := getTimeOut(r.FormValue("timeout"))
+		output, err := runExecutable(cmd, timeout+1000)
+		if err != nil {
+			return
+		}
+
+		// Encode output to JSON.
+		respJSON, err := json.Marshal(output)
+		if err != nil {
+			return
+		}
+
+		w.Write(respJSON)
 	}
-	sourcefile.WriteString(source)
-	sourcefile.Close()
-
-	input := r.FormValue("stdin") + "\n"
-	inputfile, err := os.Create(id + "/input.txt")
-	if err != nil {
-		return
-	}
-	inputfile.WriteString(input)
-	sourcefile.Close()
-
-	build := exec.Command("docker", "build", "-t", id, id)
-	err = build.Run()
-	if err != nil {
-		return
-	}
-
-	// Run the source code.
-	cmd := exec.Command("docker", "run", id)
-	timeout := getTimeOut(r.FormValue("timeout"))
-	output, err := runExecutable(cmd, input, timeout+1000)
-	if err != nil {
-		return
-	}
-
-	// Encode output to JSON.
-	respJSON, err := json.Marshal(output)
-	if err != nil {
-		return
-	}
-
-	w.Write(respJSON)
 }
 
-func runExecutable(cmd *exec.Cmd, input string, timeout int) (*Output, error) {
+func runExecutable(cmd *exec.Cmd, timeout int) (*Output, error) {
 
 	// Set cmd stdout and stderr to bytes buffer.
 	var outbuf, errbuf bytes.Buffer
 	cmd.Stdout = &outbuf
 	cmd.Stderr = &errbuf
 
-	// Get stdin writer.
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return nil, err
-	}
 	// Run the executable.
-	if err = cmd.Start(); err != nil {
-		return nil, err
-	}
-	// Write to stdin.
-	_, err = io.WriteString(stdin, input)
-	if err != nil {
+	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
 
