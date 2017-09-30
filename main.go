@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	port      string = ":8000"
-	uploadDir string = ""
+	port     string = ":8000"
+	imageDir string = "./images"
 	// Milliseconds
 	defaultTimeOut int = 1000
 	maxTimeOut     int = 10000
@@ -60,7 +60,7 @@ func python3(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	id = generateFileName()
-	CopyDir("../python3", id)
+	CopyDir(imageDir+"/python3", id)
 
 	source := r.FormValue("source")
 	sourcefile, err := os.Create(id + "/source.py")
