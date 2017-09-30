@@ -54,15 +54,12 @@ func handleImage(imagePath string, ext string) func(http.ResponseWriter, *http.R
 			id  string
 		)
 		defer func() {
-			if id != "" {
-				// Delete folder.
-				exec.Command("rm", "-rf", id).Run()
-				// Delete image.
-				exec.Command("docker", "rmi", id).Run()
-			}
 			if err != nil {
 				http.Error(w, "internal server error", 500)
 			}
+			// Delete folder and image
+			exec.Command("rm", "-rf", id).Run()
+			exec.Command("docker", "rmi", id).Run()
 		}()
 
 		var req APIRequest
