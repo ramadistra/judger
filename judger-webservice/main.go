@@ -49,7 +49,10 @@ func python3(w http.ResponseWriter, r *http.Request) {
 	)
 	defer func() {
 		if id != "" {
+			// Delete folder.
 			exec.Command("rm", "-rf", id).Run()
+			// Delete image.
+			exec.Command("docker", "rmi", id).Run()
 		}
 		if err != nil {
 			http.Error(w, err.Error(), status)
