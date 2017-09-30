@@ -50,9 +50,8 @@ func main() {
 func handleImage(imagePath string, ext string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var (
-			status = http.StatusInternalServerError
-			err    error
-			id     string
+			err error
+			id  string
 		)
 		defer func() {
 			if id != "" {
@@ -62,7 +61,7 @@ func handleImage(imagePath string, ext string) func(http.ResponseWriter, *http.R
 				exec.Command("docker", "rmi", id).Run()
 			}
 			if err != nil {
-				http.Error(w, err.Error(), status)
+				http.Error(w, "internal server error", 500)
 			}
 		}()
 
@@ -76,9 +75,8 @@ func handleImage(imagePath string, ext string) func(http.ResponseWriter, *http.R
 			return
 		}
 
-		id = generateFileName()
-
 		// Copy base image
+		id = generateFileName()
 		CopyDir(imageDir+imagePath, id)
 
 		source := req.Source
