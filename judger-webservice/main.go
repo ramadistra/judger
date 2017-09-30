@@ -43,33 +43,48 @@ func main() {
 
 func python3(w http.ResponseWriter, r *http.Request) {
 	var (
-		status   = http.StatusInternalServerError
-		err      error
-		filepath string
+		status = http.StatusInternalServerError
+		err    error
+		id     string
 	)
 	defer func() {
-		os.Remove(filepath)
+		if id != "" {
+			exec.Command("rm", "-rf", id).Run()
+		}
 		if err != nil {
 			http.Error(w, err.Error(), status)
 		}
 	}()
 
-	// Write source code to a file.
-	submission := r.FormValue("source")
-	filename := generateFileName() + ".py"
-	filepath = uploadDir + filename
-	outfile, err := os.Create(filepath)
+	id = generateFileName()
+	CopyDir("../python3", id)
+
+	source := r.FormValue("source")
+	sourcefile, err := os.Create(id + "/source.py")
 	if err != nil {
 		return
 	}
-	outfile.WriteString(submission)
-	outfile.Close()
+	sourcefile.WriteString(source)
+	sourcefile.Close()
+
+	input := r.FormValue("stdin") + "\n"
+	inputfile, err := os.Create(id + "/input.txt")
+	if err != nil {
+		return
+	}
+	inputfile.WriteString(input)
+	sourcefile.Close()
+
+	build := exec.Command("docker", "build", "-t", id, id)
+	err = build.Run()
+	if err != nil {
+		return
+	}
 
 	// Run the source code.
-	cmd := exec.Command("python", filepath)
-	input := r.FormValue("stdin") + "\n"
+	cmd := exec.Command("docker", "run", id)
 	timeout := getTimeOut(r.FormValue("timeout"))
-	output, err := runExecutable(cmd, input, timeout)
+	output, err := runExecutable(cmd, input, timeout+1000)
 	if err != nil {
 		return
 	}
