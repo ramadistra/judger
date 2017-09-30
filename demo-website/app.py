@@ -27,19 +27,21 @@ def question(id):
 def verify(script, question):
     n = int(open(question + "cases.txt", 'r').read())
     accepted = True
-    result = []
+    result, inputs = [], []
     
     for i in range(1, n + 1):
         stdin = open("{}{}.in".format(question, i)).read()
-        expected_output = open("{}{}.out".format(question, i)).read()
-        response_http = requests.post(WEBSERIVCE_URL + "/python3", data={
-            'source':script, 
-            'stdin':stdin,
-            'timeout':500,
-            })
-            
-        response = json.loads(response_http.text)
-        if response['stdout'] == expected_output:
+        inputs.append(stdin)
+        
+    data = json.dumps({'source':script, 'stdin':inputs, 'timeout':500})
+    response_http = requests.post(WEBSERIVCE_URL + "/python3", data=data)
+    response = json.loads(response_http.text)
+    stdouts = response['stdout']
+    outputs = parse_stdouts(stdouts, n)
+    
+    for i in range(n):
+        expected_output = open("{}{}.out".format(question, i+1)).read()
+        if expected_output.strip() == outputs[i].strip():
             result.append("correct")
         else:
             status = response['status']
@@ -48,6 +50,18 @@ def verify(script, question):
 
     return result, accepted
 
+def parse_stdouts(output, n):
+    i = 0
+    stdouts = ['']*n
+    for line in output.split('\n'):
+        if i > n:
+            break
+        if line == "%d.in" % (i+1):
+            i += 1
+        else:
+            stdouts[i-1] += line + '\n'
+
+    return stdouts
 
 if __name__ == "__main__":
     app.run(debug=True, port=5050)
