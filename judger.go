@@ -43,7 +43,10 @@ type Image struct {
 // Build builds the Docker Image from the Base Image.
 func (image *Image) Build() error {
 	// Copy base image and delete after build.
-	CopyDir(ImageDir+image.BaseImagePath, image.ID)
+	copy := exec.Command("cp", "-Ri", ImageDir+image.BaseImagePath, image.ID)
+	if err := copy.Run(); err != nil {
+		return err
+	}
 	defer func() {
 		exec.Command("rm", "-rf", image.ID).Run()
 	}()
