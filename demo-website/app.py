@@ -50,6 +50,7 @@ def verify(script, question):
 
     return result, accepted
 
+
 def parse_stdouts(output, n):
     i = 0
     stdouts = ['']*n
@@ -62,6 +63,7 @@ def parse_stdouts(output, n):
             stdouts[i-1] += line + '\n'
 
     return stdouts
+
 
 if __name__ == "__main__":
     app.run(debug=True, port=5050)
