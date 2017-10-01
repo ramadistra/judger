@@ -31,5 +31,26 @@ print(a.upper())
 }
 ```
 
-## Planned Features
+# Getting Started
+## Installing Docker
+### Linux  
+- Follow the instructions to install docker [here](https://docs.docker.com/engine/installation/linux/docker-ce/ubuntu/)
+- Follow the post-installation instructions [here](https://docs.docker.com/engine/installation/linux/linux-postinstall/#manage-docker-as-a-non-root-user)
+### MacOS
+- Download the Docker installer for MacOS [here](https://download.docker.com/mac/stable/Docker.dmg)
+- Run the Docker installer.
+
+## Installing Go and Dependencies
+### Installing Go
+- Download the latest version of go [here](https://golang.org/dl/)  
+### Installing Go Dependencies
+- Run the following command to install all the dependencies  
+`$ go get -d -v ./...`  
+## Running the Judger
+- Compile the judger by running  
+`$ go build`
+- Run the judger binary  
+`$ ./judger`
+
+# Planned Features
 - [Ongoing] Multiple inputs for a single source file.
